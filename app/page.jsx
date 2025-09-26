@@ -1,4 +1,31 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLoginRoute } from './hooks/useRouteProtection';
+
 export default function Home() {
+  const { loading } = useLoginRoute();
+  const router = useRouter();
+
+  useEffect(() => {
+    // If not loading and no redirect happened, go to login
+    if (!loading) {
+      router.push('/login');
+    }
+  }, [loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-16">
@@ -13,8 +40,11 @@ export default function Home() {
           </p>
           
           <div className="space-y-6">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg text-lg transition duration-200">
-              Email ID
+            <button 
+              onClick={() => router.push('/login')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg text-lg transition duration-200"
+            >
+              Get Started
             </button>
             
             <div className="grid md:grid-cols-3 gap-8 mt-16">
