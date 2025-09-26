@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/**
- * Custom hook for WebSocket connection with automatic reconnection and exponential backoff
- */
 export function useWebSocket(url, options = {}) {
   const {
     maxReconnectAttempts = 5,
@@ -30,20 +27,14 @@ export function useWebSocket(url, options = {}) {
   const reconnectDelayRef = useRef(initialReconnectDelay);
   const shouldReconnectRef = useRef(true);
 
-  /**
-   * Calculate next reconnection delay with exponential backoff
-   */
   const getNextReconnectDelay = useCallback((attempt) => {
     const delay = Math.min(
       initialReconnectDelay * Math.pow(backoffFactor, attempt),
       maxReconnectDelay
     );
-    return delay + Math.random() * 1000; // Add jitter
+    return delay + Math.random() * 1000;
   }, [initialReconnectDelay, backoffFactor, maxReconnectDelay]);
 
-  /**
-   * Clear reconnection timeout
-   */
   const clearReconnectTimeout = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -51,9 +42,6 @@ export function useWebSocket(url, options = {}) {
     }
   }, []);
 
-  /**
-   * Connect to WebSocket
-   */
   const connect = useCallback(() => {
     if (!url) return;
 
@@ -72,8 +60,9 @@ export function useWebSocket(url, options = {}) {
         
         onOpen?.(event);
         
-        if (reconnectAttempts > 0) {
-          onReconnectSuccess?.(reconnectAttempts);
+        const currentAttempts = reconnectAttempts;
+        if (currentAttempts > 0) {
+          onReconnectSuccess?.(currentAttempts);
         }
       };
 
@@ -94,7 +83,6 @@ export function useWebSocket(url, options = {}) {
         
         onClose?.(event);
         
-        // Attempt reconnection if it wasn't a clean close and we should reconnect
         if (shouldReconnectRef.current && event.code !== 1000) {
           scheduleReconnect();
         }
@@ -103,25 +91,22 @@ export function useWebSocket(url, options = {}) {
       ws.onerror = (event) => {
         console.error('WebSocket error:', event);
         const error = new Error('WebSocket connection error');
-        setLastError(error);
+        setLastError(prev => error);
         onError?.(error, event);
       };
 
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
       setConnectionState('error');
-      setLastError(error);
+      setLastError(prev => error);
       onError?.(error);
       
       if (shouldReconnectRef.current) {
         scheduleReconnect();
       }
     }
-  }, [url, onOpen, onMessage, onClose, onError, onReconnectSuccess, reconnectAttempts, initialReconnectDelay]);
+  }, [url, onOpen, onMessage, onClose, onError, onReconnectSuccess, initialReconnectDelay]);
 
-  /**
-   * Schedule reconnection attempt
-   */
   const scheduleReconnect = useCallback(() => {
     if (reconnectAttempts >= maxReconnectAttempts) {
       console.log('Max reconnection attempts reached');
@@ -142,9 +127,6 @@ export function useWebSocket(url, options = {}) {
     }, delay);
   }, [reconnectAttempts, maxReconnectAttempts, getNextReconnectDelay, onReconnectFailed, onReconnectAttempt, connect]);
 
-  /**
-   * Disconnect WebSocket
-   */
   const disconnect = useCallback(() => {
     shouldReconnectRef.current = false;
     clearReconnectTimeout();
@@ -159,20 +141,14 @@ export function useWebSocket(url, options = {}) {
     reconnectDelayRef.current = initialReconnectDelay;
   }, [clearReconnectTimeout, initialReconnectDelay]);
 
-  /**
-   * Manually trigger reconnection
-   */
   const reconnect = useCallback(() => {
     disconnect();
     shouldReconnectRef.current = true;
     setReconnectAttempts(0);
     reconnectDelayRef.current = initialReconnectDelay;
-    setTimeout(connect, 100); // Small delay to ensure clean disconnect
+    setTimeout(connect, 100);
   }, [disconnect, connect, initialReconnectDelay]);
 
-  /**
-   * Send message through WebSocket
-   */
   const sendMessage = useCallback((data) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
@@ -181,7 +157,7 @@ export function useWebSocket(url, options = {}) {
         return true;
       } catch (error) {
         console.error('Error sending WebSocket message:', error);
-        setLastError(error);
+        setLastError(prev => error);
         return false;
       }
     } else {
@@ -190,9 +166,6 @@ export function useWebSocket(url, options = {}) {
     }
   }, []);
 
-  /**
-   * Get current connection status
-   */
   const getConnectionStatus = useCallback(() => {
     return {
       state: connectionState,
@@ -206,7 +179,6 @@ export function useWebSocket(url, options = {}) {
     };
   }, [connectionState, reconnectAttempts, maxReconnectAttempts, lastError]);
 
-  // Auto-connect on mount if enabled
   useEffect(() => {
     if (autoConnect && url) {
       shouldReconnectRef.current = true;

@@ -14,12 +14,10 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     
     this.setState({
@@ -27,7 +25,6 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
 
-    // Report error to monitoring service if available
     if (typeof window !== 'undefined' && window.reportError) {
       window.reportError(error);
     }
@@ -53,7 +50,6 @@ class ErrorBoundary extends React.Component {
       const { error, errorInfo, retryCount } = this.state;
       const { fallback: CustomFallback } = this.props;
 
-      // Use custom fallback if provided
       if (CustomFallback) {
         return (
           <CustomFallback 
@@ -66,7 +62,6 @@ class ErrorBoundary extends React.Component {
         );
       }
 
-      // Default error UI
       return (
         <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
@@ -94,7 +89,6 @@ class ErrorBoundary extends React.Component {
               </p>
             </div>
 
-            {/* Error details in development */}
             {process.env.NODE_ENV === 'development' && error && (
               <div className="mb-6 p-4 bg-gray-50 rounded-lg text-left">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Error Details:</h3>

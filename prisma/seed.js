@@ -1,9 +1,8 @@
-const { PrismaClient } = require('@prisma/client')
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create initial voting options
   const options = [
     { optionName: 'Option A' },
     { optionName: 'Option B' },

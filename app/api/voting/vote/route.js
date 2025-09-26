@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
-import { getSessionFromRequest } from '../../../../lib/session.js'
+import { cookies } from 'next/headers'
+import { validateSession, hasUserVoted } from '../../../../lib/session.js'
 import { broadcastVoteUpdate } from '../../../../lib/websocket-server.js'
 import { getCurrentVotingResults } from '../../../../lib/voting-utils.js'
 
@@ -8,11 +9,9 @@ const prisma = new PrismaClient()
 
 export async function POST(request) {
   try {
-    // Parse request body
     const body = await request.json()
     const { optionId } = body
 
-    // Validate input
     if (!optionId || typeof optionId !== 'number') {
       return NextResponse.json(
         {
@@ -26,10 +25,13 @@ export async function POST(request) {
       )
     }
 
-    // Get session from request
-    const sessionData = await getSessionFromRequest(request)
-    
-    if (!sessionData || !sessionData.user) {
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get('voting-session')?.value
+
+    console.log('Vote API - Session ID from cookie:', sessionId)
+
+    if (!sessionId) {
+      console.log('Vote API - No session ID found in cookie')
       return NextResponse.json(
         {
           success: false,
@@ -42,8 +44,25 @@ export async function POST(request) {
       )
     }
 
-    // Check if user has already voted
-    if (sessionData.hasVoted) {
+    const user = await validateSession(sessionId)
+    
+    if (!user) {
+      console.log('Vote API - Session validation failed for ID:', sessionId)
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Valid session required to vote'
+          }
+        },
+        { status: 401 }
+      )
+    }
+
+    const userHasVoted = await hasUserVoted(user.id)
+    if (userHasVoted) {
+      console.log('Vote API - User has already voted:', user.name)
       return NextResponse.json(
         {
           success: false,
@@ -56,7 +75,6 @@ export async function POST(request) {
       )
     }
 
-    // Verify the option exists
     const option = await prisma.option.findUnique({
       where: { id: optionId }
     })
@@ -74,10 +92,9 @@ export async function POST(request) {
       )
     }
 
-    // Create the vote
     const vote = await prisma.vote.create({
       data: {
-        userId: sessionData.user.id,
+        userId: user.id,
         optionId: optionId
       },
       include: {
@@ -91,14 +108,12 @@ export async function POST(request) {
       }
     })
 
-    // Get updated results and broadcast to all connected clients
     try {
       const updatedResults = await getCurrentVotingResults()
       broadcastVoteUpdate(updatedResults)
       console.log('Vote update broadcasted to WebSocket clients')
     } catch (broadcastError) {
       console.error('Error broadcasting vote update:', broadcastError)
-      // Don't fail the vote if broadcast fails
     }
 
     return NextResponse.json({

@@ -1,8 +1,5 @@
 'use client';
 
-/**
- * Reusable loading spinner component with different sizes and messages
- */
 export default function LoadingSpinner({ 
   size = 'medium', 
   message = 'Loading...', 

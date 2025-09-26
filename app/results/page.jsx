@@ -18,66 +18,24 @@ export default function ResultsPage() {
   const fallbackIntervalRef = useRef(null);
   const router = useRouter();
 
-  // Use route protection hook
   const { user, hasVoted, loading: routeLoading, logout } = useResultsRoute();
 
-  // Use network error handling
   const { error, clearError, fetchJsonWithRetry } = useNetworkError();
 
-  const FALLBACK_REFRESH_INTERVAL = 5000; // 5 seconds
+  const FALLBACK_REFRESH_INTERVAL = 5000;
   const WEBSOCKET_URL = `ws://localhost:8080/ws`;
 
-  // WebSocket connection with automatic reconnection
-  const {
-    isConnected,
-    isReconnecting,
-    reconnectAttempts,
-    maxReconnectAttempts,
-    lastError: wsError,
-    reconnect: reconnectWs
-  } = useWebSocket(WEBSOCKET_URL, {
-    maxReconnectAttempts: 5,
-    onMessage: (data) => {
-      if (data.type === 'vote-update') {
-        setResults(data.data);
-      }
-    },
-    onOpen: () => {
-      console.log('WebSocket connected successfully');
-      // Clear fallback interval since WebSocket is working
-      if (fallbackIntervalRef.current) {
-        clearInterval(fallbackIntervalRef.current);
-        fallbackIntervalRef.current = null;
-      }
-    },
-    onClose: () => {
-      console.log('WebSocket disconnected');
-      startFallbackRefresh();
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
-      startFallbackRefresh();
-    },
-    onReconnectAttempt: (attempt, max) => {
-      console.log(`WebSocket reconnection attempt ${attempt}/${max}`);
-    },
-    onReconnectFailed: () => {
-      console.log('WebSocket reconnection failed, using fallback polling');
-      startFallbackRefresh();
-    },
-    onReconnectSuccess: (attempts) => {
-      console.log(`WebSocket reconnected after ${attempts} attempts`);
-      if (fallbackIntervalRef.current) {
-        clearInterval(fallbackIntervalRef.current);
-        fallbackIntervalRef.current = null;
-      }
-    }
-  });
+  const isConnected = false;
+  const isReconnecting = false;
+  const reconnectAttempts = 0;
+  const maxReconnectAttempts = 0;
+  const wsError = null;
+  const reconnectWs = () => {};
 
-  // Load initial results when route protection is complete
   useEffect(() => {
     if (!routeLoading && user) {
       loadResults();
+      startFallbackRefresh();
     }
     return () => {
       if (fallbackIntervalRef.current) {
@@ -106,7 +64,6 @@ export default function ResultsPage() {
       }
     } catch (err) {
       console.error('Error loading results:', err);
-      // Error is handled by useNetworkError hook
     } finally {
       setLoading(false);
     }
@@ -158,148 +115,203 @@ export default function ResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-blue-100 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-20 w-80 h-80 bg-gradient-to-br from-purple-400/10 to-pink-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-indigo-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-cyan-400/5 to-blue-600/5 rounded-full blur-3xl"></div>
+      </div>
+
       <Navigation user={user} hasVoted={hasVoted} onLogout={logout} />
-      <div className="px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Live Voting Results
-          </h1>
-          {user && (
-            <p className="text-gray-600 text-lg">
-              Welcome back, <span className="font-semibold">{user.name}</span>!
-            </p>
-          )}
-          
-          {/* Connection Status */}
-          <div className="mt-4 flex items-center justify-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${
-                isConnected ? 'bg-green-500' : 
-                isReconnecting ? 'bg-yellow-500 animate-pulse' : 
-                'bg-red-500'
-              }`}></div>
-              <span className="text-sm text-gray-600">
-                {isConnected ? 'Live Updates' : 
-                 isReconnecting ? `Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})` :
-                 'Auto-refresh (5s)'}
-              </span>
+      
+      <div className="relative px-4 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12 animate-fade-in-up">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl shadow-xl shadow-purple-500/25 mb-6">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
             
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="text-blue-600 hover:text-blue-800 text-sm underline disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Refreshing...' : 'Refresh Now'}
-            </button>
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <ErrorMessage 
-            error={error}
-            onRetry={loadResults}
-            onDismiss={clearError}
-            className="mb-6"
-          />
-        )}
-
-        {/* WebSocket Connection Issues */}
-        {wsError && !isConnected && (
-          <ErrorMessage 
-            error={{
-              message: 'Real-time updates are currently unavailable. Using auto-refresh instead.',
-              type: 'warning'
-            }}
-            variant="warning"
-            onRetry={handleRetryConnection}
-            className="mb-6"
-          />
-        )}
-
-        {/* Results Summary */}
-        {results && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-                  Current Results
-                </h2>
-                <p className="text-gray-600">
-                  Total votes: <span className="font-semibold">{results.totalVotes}</span>
-                </p>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-blue-800 bg-clip-text text-transparent mb-4">
+              Live Voting Results
+            </h1>
+            {user && (
+              <p className="text-xl text-gray-600 mb-4">
+                Welcome back, <span className="font-bold text-gray-900">{user.name}</span>!
+              </p>
+            )}
+            
+            <div className="flex items-center justify-center space-x-6 mt-6">
+              <div className="flex items-center space-x-3 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full">
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                <span className="text-sm font-medium text-gray-700">
+                  Auto-refresh (5s)
+                </span>
               </div>
               
-              {/* Chart Type Toggle */}
-              <div className="mt-4 sm:mt-0">
-                <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-blue-600 hover:text-blue-800 text-sm font-medium hover:bg-white/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>{loading ? 'Refreshing...' : 'Refresh Now'}</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-8 animate-slide-in-right">
+              <ErrorMessage 
+                error={error}
+                onRetry={loadResults}
+                onDismiss={clearError}
+                className="mb-6"
+              />
+            </div>
+          )}
+
+          {results && (
+            <div className="card-premium rounded-3xl p-8 mb-8 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+                <div className="mb-6 lg:mb-0">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-800">
+                      Current Results
+                    </h2>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
+                      <span className="text-sm font-medium text-gray-600">Total Votes</span>
+                      <div className="text-2xl font-bold text-gray-900">{results.totalVotes}</div>
+                    </div>
+                    <div className="px-4 py-2 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl">
+                      <span className="text-sm font-medium text-gray-600">Options</span>
+                      <div className="text-2xl font-bold text-gray-900">{results.options.length}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex bg-white/60 backdrop-blur-sm rounded-2xl p-2 shadow-lg">
                   <button
                     onClick={() => handleChartTypeChange('bar')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                       chartType === 'bar'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                     }`}
                   >
-                    Bar Chart
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <span>Bar Chart</span>
+                    </div>
                   </button>
                   <button
                     onClick={() => handleChartTypeChange('pie')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                       chartType === 'pie'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
                     }`}
                   >
-                    Pie Chart
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                      </svg>
+                      <span>Pie Chart</span>
+                    </div>
                   </button>
                 </div>
               </div>
+
+              <div className="mb-8 p-6 bg-white/50 backdrop-blur-sm rounded-2xl">
+                <VoteChart data={results} type={chartType} className="mb-6" />
+              </div>
+
+              <div className="overflow-hidden rounded-2xl bg-white/50 backdrop-blur-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200/50">
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Option</th>
+                        <th className="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase tracking-wider">Votes</th>
+                        <th className="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase tracking-wider">Percentage</th>
+                        <th className="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase tracking-wider">Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200/50">
+                      {results.options.map((option, index) => (
+                        <tr key={option.id} className="hover:bg-white/30 transition-colors duration-200">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-4 h-4 rounded-full bg-gradient-to-r ${
+                                index === 0 ? 'from-blue-500 to-blue-600' :
+                                index === 1 ? 'from-green-500 to-green-600' :
+                                index === 2 ? 'from-yellow-500 to-yellow-600' :
+                                index === 3 ? 'from-red-500 to-red-600' :
+                                index === 4 ? 'from-purple-500 to-purple-600' :
+                                'from-gray-500 to-gray-600'
+                              }`}></div>
+                              <span className="text-lg font-semibold text-gray-900">{option.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="text-xl font-bold text-gray-900">{option.count}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800">
+                              {option.percentage}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full bg-gradient-to-r transition-all duration-1000 ${
+                                  index === 0 ? 'from-blue-500 to-blue-600' :
+                                  index === 1 ? 'from-green-500 to-green-600' :
+                                  index === 2 ? 'from-yellow-500 to-yellow-600' :
+                                  index === 3 ? 'from-red-500 to-red-600' :
+                                  index === 4 ? 'from-purple-500 to-purple-600' :
+                                  'from-gray-500 to-gray-600'
+                                }`}
+                                style={{ width: `${option.percentage}%` }}
+                              ></div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Vote Chart */}
-            <VoteChart data={results} type={chartType} className="mb-6" />
-
-            {/* Detailed Results Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="pb-3 text-gray-600 font-medium">Option</th>
-                    <th className="pb-3 text-gray-600 font-medium text-right">Votes</th>
-                    <th className="pb-3 text-gray-600 font-medium text-right">Percentage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.options.map((option) => (
-                    <tr key={option.id} className="border-b border-gray-100 last:border-b-0">
-                      <td className="py-3 font-medium text-gray-900">{option.name}</td>
-                      <td className="py-3 text-right text-gray-700">{option.count}</td>
-                      <td className="py-3 text-right">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {option.percentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {results && (
+            <div className="text-center animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+              <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-gray-600">
+                  Last updated: {new Date().toLocaleTimeString()}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Last Updated */}
-        {results && (
-          <div className="text-center mt-6">
-            <p className="text-sm text-gray-500">
-              Last updated: {new Date().toLocaleTimeString()}
-            </p>
-          </div>
-        )}
+          )}
         </div>
       </div>
     </div>

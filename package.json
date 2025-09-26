@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "dev:next": "next dev --turbopack",
+    "dev:ws": "node -e \"import('./lib/websocket-server.js').then(m => m.startWebSocketServer())\"",
     "build": "next build --turbopack",
     "start": "NODE_ENV=production node server.js",
     "start:next": "next start",

@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest } from '../../../../lib/session.js';
+import { cookies } from 'next/headers';
+import { validateSession, hasUserVoted } from '../../../../lib/session.js';
 
-/**
- * GET /api/auth/session
- * Validate current session and return user data
- */
 export async function GET(request) {
   try {
-    // Get session data from request
-    const sessionData = await getSessionFromRequest(request);
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get('voting-session')?.value;
 
-    if (!sessionData) {
+    console.log('Session check - Session ID from cookie:', sessionId);
+
+    if (!sessionId) {
+      console.log('No session ID found in cookie');
       return NextResponse.json(
         {
           valid: false,
@@ -23,9 +23,26 @@ export async function GET(request) {
       );
     }
 
-    const { user, hasVoted } = sessionData;
+    const user = await validateSession(sessionId);
+    
+    if (!user) {
+      console.log('Session validation failed for ID:', sessionId);
+      return NextResponse.json(
+        {
+          valid: false,
+          error: {
+            code: 'INVALID_SESSION',
+            message: 'No valid session found'
+          }
+        },
+        { status: 401 }
+      );
+    }
 
-    // Return session validation success
+    const userHasVoted = await hasUserVoted(user.id);
+
+    console.log('Session validated successfully for user:', user.name);
+
     return NextResponse.json(
       {
         valid: true,
@@ -33,7 +50,7 @@ export async function GET(request) {
           id: user.id,
           name: user.name
         },
-        hasVoted
+        hasVoted: userHasVoted
       },
       { status: 200 }
     );
@@ -41,7 +58,6 @@ export async function GET(request) {
   } catch (error) {
     console.error('Session validation API error:', error);
 
-    // Generic server error
     return NextResponse.json(
       {
         valid: false,
@@ -55,7 +71,6 @@ export async function GET(request) {
   }
 }
 
-// Handle unsupported methods
 export async function POST() {
   return NextResponse.json(
     {

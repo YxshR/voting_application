@@ -6,21 +6,17 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = process.env.PORT || 3000;
 
-// Initialize Next.js app
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  // Start WebSocket server
   console.log('Starting WebSocket server...');
   startWebSocketServer();
 
 
   const server = createServer(async (req, res) => {
     try {
-      // Use WHATWG URL API instead of deprecated url.parse()
-      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-      await handle(req, res, parsedUrl);
+      await handle(req, res);
     } catch (err) {
       console.error('Error occurred handling', req.url, err);
       res.statusCode = 500;

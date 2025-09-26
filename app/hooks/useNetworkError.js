@@ -2,28 +2,19 @@
 
 import { useState, useCallback } from 'react';
 
-/**
- * Custom hook for handling network errors with retry mechanisms
- */
 export function useNetworkError() {
   const [error, setError] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   const MAX_RETRIES = 3;
-  const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
+  const RETRY_DELAYS = [1000, 2000, 4000];
 
-  /**
-   * Clear current error state
-   */
   const clearError = useCallback(() => {
     setError(null);
     setRetryCount(0);
   }, []);
 
-  /**
-   * Set error with user-friendly message
-   */
   const setNetworkError = useCallback((err, context = '') => {
     let errorMessage = 'An unexpected error occurred';
     let errorType = 'unknown';
@@ -83,20 +74,15 @@ export function useNetworkError() {
     });
   }, []);
 
-  /**
-   * Execute a network request with automatic retry logic
-   */
   const executeWithRetry = useCallback(async (requestFn, options = {}) => {
     const {
       maxRetries = MAX_RETRIES,
       retryDelays = RETRY_DELAYS,
       context = '',
       shouldRetry = (error, attempt) => {
-        // Don't retry client errors (4xx) except 408, 429
         if (error.status >= 400 && error.status < 500) {
           return error.status === 408 || error.status === 429;
         }
-        // Retry network errors and server errors
         return attempt < maxRetries;
       }
     } = options;
@@ -111,7 +97,6 @@ export function useNetworkError() {
         
         const result = await requestFn();
         
-        // Success - clear error state
         clearError();
         setIsRetrying(false);
         
@@ -120,13 +105,11 @@ export function useNetworkError() {
         lastError = err;
         attempt++;
 
-        // Check if we should retry
         if (attempt <= maxRetries && shouldRetry(err, attempt)) {
           const delay = retryDelays[attempt - 1] || retryDelays[retryDelays.length - 1];
           
           console.log(`Request failed (attempt ${attempt}), retrying in ${delay}ms...`, err);
           
-          // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
           break;
@@ -134,15 +117,11 @@ export function useNetworkError() {
       }
     }
 
-    // All retries failed
     setIsRetrying(false);
     setNetworkError(lastError, context);
     throw lastError;
   }, [clearError, setNetworkError]);
 
-  /**
-   * Enhanced fetch with retry logic and timeout
-   */
   const fetchWithRetry = useCallback(async (url, options = {}) => {
     const {
       timeout = 10000,
@@ -182,9 +161,6 @@ export function useNetworkError() {
     });
   }, [executeWithRetry]);
 
-  /**
-   * Enhanced fetch that returns JSON with error handling
-   */
   const fetchJsonWithRetry = useCallback(async (url, options = {}) => {
     const response = await fetchWithRetry(url, options);
     

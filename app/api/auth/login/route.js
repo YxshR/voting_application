@@ -1,17 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createSession, createSessionCookie } from '../../../../lib/session.js';
 
-/**
- * POST /api/auth/login
- * Create user session with name-based authentication
- */
 export async function POST(request) {
   try {
-    // Parse request body
     const body = await request.json();
     const { name } = body;
 
-    // Input validation
     if (!name) {
       return NextResponse.json(
         {
@@ -65,13 +59,8 @@ export async function POST(request) {
       );
     }
 
-    // Create session
     const { user, sessionId } = await createSession(trimmedName);
 
-    // Create session cookie
-    const sessionCookie = createSessionCookie(sessionId);
-
-    // Return success response with user data
     const response = NextResponse.json(
       {
         success: true,
@@ -85,15 +74,21 @@ export async function POST(request) {
       { status: 200 }
     );
 
-    // Set session cookie
-    response.headers.set('Set-Cookie', sessionCookie);
+    response.cookies.set({
+      name: 'voting-session',
+      value: sessionId,
+      maxAge: 24 * 60 * 60,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    });
 
     return response;
 
   } catch (error) {
     console.error('Login API error:', error);
 
-    // Handle specific database errors
     if (error.message.includes('Failed to create session')) {
       return NextResponse.json(
         {
@@ -107,7 +102,6 @@ export async function POST(request) {
       );
     }
 
-    // Generic server error
     return NextResponse.json(
       {
         success: false,
@@ -121,7 +115,6 @@ export async function POST(request) {
   }
 }
 
-// Handle unsupported methods
 export async function GET() {
   return NextResponse.json(
     {

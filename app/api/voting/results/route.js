@@ -3,14 +3,12 @@ import { NextResponse } from 'next/server'
 
 const prisma = new PrismaClient()
 
-// Simple in-memory cache for results
 let resultsCache = null
 let cacheTimestamp = null
-const CACHE_DURATION = 5000 // 5 seconds
+const CACHE_DURATION = 5000
 
 export async function GET() {
   try {
-    // Check if we have valid cached results
     const now = Date.now()
     if (resultsCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
       return NextResponse.json({
@@ -20,7 +18,6 @@ export async function GET() {
       })
     }
 
-    // Fetch vote counts with option details
     const voteResults = await prisma.option.findMany({
       include: {
         _count: {
@@ -34,10 +31,8 @@ export async function GET() {
       }
     })
 
-    // Calculate total votes
     const totalVotes = voteResults.reduce((sum, option) => sum + option._count.votes, 0)
 
-    // Format results with percentages
     const formattedResults = {
       options: voteResults.map(option => ({
         id: option.id,
@@ -48,7 +43,6 @@ export async function GET() {
       totalVotes
     }
 
-    // Update cache
     resultsCache = formattedResults
     cacheTimestamp = now
 
@@ -60,7 +54,7 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error fetching voting results:', error)
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -76,7 +70,6 @@ export async function GET() {
   }
 }
 
-// Helper function to clear cache (useful for testing or manual cache invalidation)
 export function clearResultsCache() {
   resultsCache = null
   cacheTimestamp = null
